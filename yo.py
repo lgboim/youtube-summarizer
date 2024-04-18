@@ -106,7 +106,11 @@ def main():
                     summarize_progress.progress(100)
                     if summary:
                         st.success("Summary of the Transcript:")
-                        st.code(summary, language=None, copy=True)
+                        st.code(summary, language=None)
+                        copy_button = st.button("Copy Summary")
+                        if copy_button:
+                            copy_to_clipboard(summary)
+                            st.success("Summary copied to clipboard!")
                     else:
                         st.error("Failed to summarize the transcript.")
                 else:
