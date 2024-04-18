@@ -109,13 +109,12 @@ def main():
                     
                     if summary:
                         st.success("Summary of the Transcript:")
-                        summary_container = st.container()
-                        with summary_container:
-                            summary_text = st.code(summary, language="text")
+                        with st.expander("Summary of the Transcript"):
+                            st.markdown(summary)
                             copy_button = st.button("Copy Summary")
                             if copy_button:
                                 pyperclip.copy(summary)
-                                st.success("Summary copied to clipboard!", icon="✅")    
+                                st.success("Summary copied to clipboard!", icon="✅")
                     else:
                         st.error("Could not generate the summary.")
                 else:
