@@ -100,28 +100,23 @@ def main():
                 transcript_progress = st.progress(0)
                 transcript = fetch_transcript(video_id)
                 transcript_progress.progress(100)
-                if transcript:
-                    st.info("Summarizing the transcript...")
-                    summarize_progress = st.progress(0)
-                    summary = summarize_text(transcript, prompt, api_key, max_tokens)
-                    summarize_progress.progress(100)
-                    if summary:
-                        st.success("Summary of the Transcript:")
-                        summary_container = st.container()
-                        with summary_container:
-                            summary_text = st.text_area("", value=summary, height=300)
-                            copy_button = st.button("Copy Summary")
-                            if copy_button:
-                                pyperclip.copy(summary_text)
-                                st.success("Summary copied to clipboard!")
-                    else:
-                        st.error("Could not fetch the transcript.")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-            elif not video_url:
-                st.warning("Please enter a valid YouTube video URL.")
-            else:
-                st.warning("Please enter your Anthropic API key.")
+                if summary:
+                    st.success("Summary of the Transcript:")
+                    summary_container = st.container()
+                    with summary_container:
+                        summary_text = st.text_area("", value=summary, height=300)
+                        copy_button = st.button("Copy Summary")
+                        if copy_button:
+                            pyperclip.copy(summary_text)
+                            st.success("Summary copied to clipboard!")
+                else:
+                    st.error("Could not fetch the transcript.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        elif not video_url:
+            st.warning("Please enter a valid YouTube video URL.")
+        else:
+            st.warning("Please enter your Anthropic API key.")
 
 if __name__ == "__main__":
     main()
