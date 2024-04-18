@@ -3,4 +3,4 @@ youtube_transcript_api
 anthropic
 pytube
 pyperclip
-streamlit-components
+streamlit.components.v1
