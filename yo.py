@@ -107,6 +107,7 @@ def main():
                     if summary:
                         st.success("Summary of the Transcript:")
                         st.write(summary)
+                        st.code(summary, language=None, copy=True)
                     else:
                         st.error("Failed to summarize the transcript.")
                 else:
