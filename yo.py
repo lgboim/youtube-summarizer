@@ -111,10 +111,10 @@ def main():
                         st.success("Summary of the Transcript:")
                         summary_container = st.container()
                         with summary_container:
-                            summary_text = st.text_area("", value=summary, height=300, key="summary_text")
+                            summary_text = st.code(summary, language="text")
                             copy_button = st.button("Copy Summary")
                             if copy_button:
-                                pyperclip.copy(summary_text)
+                                pyperclip.copy(summary)
                                 st.success("Summary copied to clipboard!", icon="✅")    
                     else:
                         st.error("Could not generate the summary.")
