@@ -52,6 +52,7 @@ def main():
         
         st.subheader("Input")
         api_key = st.text_input("Enter your Anthropic API key:", type="password")
+        st.markdown("[Get your API key here](https://console.anthropic.com/settings/keys)")
         video_url = st.text_input("Enter the YouTube video URL:")
         max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100)
         st.subheader("Prompt Templates")
