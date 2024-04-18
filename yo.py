@@ -111,9 +111,17 @@ def main():
                         st.success("Summary of the Transcript:")
                         summary_text = st.text_area("", value=summary, height=300, key="summary_text")
                         copy_button = st.button("Copy Summary")
+                        
                         if copy_button:
-                            pyperclip.copy(summary_text)
-                            st.experimental_rerun()
+                            js_code = f"""
+                            <script>
+                            var copyText = document.querySelector("#summary_text");
+                            copyText.select();
+                            document.execCommand("copy");
+                            </script>
+                            """
+                            html(js_code)
+                            st.success("Summary copied to clipboard!", icon="✅")
                     else:
                         st.error("Could not generate the summary.")
                 else:
