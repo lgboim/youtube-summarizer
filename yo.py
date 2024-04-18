@@ -3,6 +3,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import anthropic
 from pytube import YouTube
 import pyperclip
+import streamlit.components.v1 as components
 
 def fetch_transcript(video_id):
     try:
@@ -109,19 +110,27 @@ def main():
                     
                     if summary:
                         st.success("Summary of the Transcript:")
-                        summary_text = st.text_area("", value=summary, height=300, key="summary_text")
-                        copy_button = st.button("Copy Summary")
-                        
-                        if copy_button:
-                            js_code = f"""
+                        def copy_button(text):
+                            button_html = f"""
+                            <button onclick="copyToClipboard('{text}')" style="background-color: #4CAF50; color: white; padding: 8px 16px; border: none; cursor: pointer; border-radius: 4px;">
+                                Copy Summary
+                            </button>
                             <script>
-                            var copyText = document.querySelector("#summary_text");
-                            copyText.select();
-                            document.execCommand("copy");
+                            function copyToClipboard(text) {{
+                                const el = document.createElement('textarea');
+                                el.value = text;
+                                document.body.appendChild(el);
+                                el.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(el);
+                                alert('Summary copied to clipboard!');
+                            }}
                             </script>
                             """
-                            html(js_code)
-                            st.success("Summary copied to clipboard!", icon="✅")
+                            return components.html(button_html, height=50)
+                        
+                        summary_text = st.text_area("", value=summary, height=300, key="summary_text")
+                        copy_button(summary)
                     else:
                         st.error("Could not generate the summary.")
                 else:
