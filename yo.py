@@ -109,21 +109,19 @@ def main():
                         st.success("Summary of the Transcript:")
                         summary_container = st.container()
                         with summary_container:
-                            st.write(summary)
+                            summary_text = st.text_area("", value=summary, height=300)
                             copy_button = st.button("Copy Summary")
                             if copy_button:
-                                pyperclip.copy(summary)
+                                pyperclip.copy(summary_text)
                                 st.success("Summary copied to clipboard!")
                     else:
-                        st.error("Failed to summarize the transcript.")
-                else:
-                    st.error("Could not fetch the transcript.")
-            except Exception as e:
-                st.error(f"Error: {e}")
-        elif not video_url:
-            st.warning("Please enter a valid YouTube video URL.")
-        else:
-            st.warning("Please enter your Anthropic API key.")
+                        st.error("Could not fetch the transcript.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            elif not video_url:
+                st.warning("Please enter a valid YouTube video URL.")
+            else:
+                st.warning("Please enter your Anthropic API key.")
 
 if __name__ == "__main__":
     main()
