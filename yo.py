@@ -110,10 +110,10 @@ def main():
                         summary_container = st.container()
                         with summary_container:
                             st.write(summary)
-                        copy_button = summary_container.button("Copy Summary")
-                        if copy_button:
-                            pyperclip.copy(summary)
-                            st.success("Summary copied to clipboard!")
+                            copy_button = st.button("Copy Summary")
+                            if copy_button:
+                                pyperclip.copy(summary)
+                                st.success("Summary copied to clipboard!")
                     else:
                         st.error("Failed to summarize the transcript.")
                 else:
@@ -124,5 +124,6 @@ def main():
             st.warning("Please enter a valid YouTube video URL.")
         else:
             st.warning("Please enter your Anthropic API key.")
+
 if __name__ == "__main__":
     main()
