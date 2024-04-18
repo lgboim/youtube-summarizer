@@ -109,12 +109,11 @@ def main():
                     
                     if summary:
                         st.success("Summary of the Transcript:")
-                        with st.expander("Summary of the Transcript"):
-                            st.markdown(summary)
-                            copy_button = st.button("Copy Summary")
-                            if copy_button:
-                                pyperclip.copy(summary)
-                                st.success("Summary copied to clipboard!", icon="✅")
+                        summary_text = st.text_area("", value=summary, height=300, key="summary_text")
+                        copy_button = st.button("Copy Summary")
+                        if copy_button:
+                            pyperclip.copy(summary_text)
+                            st.experimental_rerun()
                     else:
                         st.error("Could not generate the summary.")
                 else:
