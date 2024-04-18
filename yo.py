@@ -115,7 +115,7 @@ def main():
                             copy_button = st.button("Copy Summary")
                             if copy_button:
                                 pyperclip.copy(summary_text)
-                                st.success("Summary copied to clipboard!")
+                                st.success("Summary copied to clipboard!", icon="✅")    
                     else:
                         st.error("Could not generate the summary.")
                 else:
