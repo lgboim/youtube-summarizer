@@ -45,17 +45,16 @@ def summarize_text(text, prompt, api_key, max_tokens):
 
 def main():
     st.set_page_config(page_title="YouTube Transcript Summarizer", page_icon=":memo:", layout="wide")
-
     st.title("YouTube Transcript Summarizer")
-
+    
     # Add a sidebar for user inputs
     with st.sidebar:
-        
         st.subheader("Input")
         api_key = st.text_input("Enter your Anthropic API key:", type="password")
         st.markdown("[Get your API key here](https://console.anthropic.com/settings/keys)")
         video_url = st.text_input("Enter the YouTube video URL:")
         max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100)
+        
         st.subheader("Prompt Templates")
         prompt_templates = {
             "Summary": "Summarize the following transcript:",
@@ -81,14 +80,14 @@ def main():
             "Custom": st.text_area("Enter a custom prompt:")
         }
         selected_template = st.radio("Select a prompt template:", list(prompt_templates.keys()))
-
+        
         if selected_template == "Custom":
             prompt = prompt_templates["Custom"]
         else:
             prompt = prompt_templates[selected_template]
-
+        
         summarize_button = st.button("Summarize")
-
+    
     if summarize_button:
         if video_url and api_key:
             try:
@@ -96,16 +95,18 @@ def main():
                 video = YouTube(video_url)
                 thumbnail_url = video.thumbnail_url
                 st.image(thumbnail_url, width=400)  # Display the video thumbnail
+                
                 st.info("Fetching transcript...")
                 transcript_progress = st.progress(0)
                 transcript = fetch_transcript(video_id)
                 transcript_progress.progress(100)
+                
                 if transcript:
-                    st.success("Transcript fetched successfully!")
                     st.info("Summarizing the transcript...")
                     summary_progress = st.progress(0)
                     summary = summarize_text(transcript, prompt, api_key, max_tokens)
                     summary_progress.progress(100)
+                    
                     if summary:
                         st.success("Summary of the Transcript:")
                         summary_container = st.container()
@@ -119,5 +120,12 @@ def main():
                         st.error("Could not generate the summary.")
                 else:
                     st.error("Could not fetch the transcript.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        elif not video_url:
+            st.warning("Please enter a valid YouTube video URL.")
+        else:
+            st.warning("Please enter your Anthropic API key.")
+
 if __name__ == "__main__":
     main()
