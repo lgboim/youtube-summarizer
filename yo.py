@@ -111,7 +111,7 @@ def main():
                         st.success("Summary of the Transcript:")
                         summary_container = st.container()
                         with summary_container:
-                            summary_text = st.text_area("", value=summary, height=300)
+                            summary_text = st.text_area("", value=summary, height=300, key="summary_text")
                             copy_button = st.button("Copy Summary")
                             if copy_button:
                                 pyperclip.copy(summary_text)
