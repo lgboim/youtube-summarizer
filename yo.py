@@ -53,7 +53,7 @@ def main():
         st.subheader("Input")
         api_key = st.text_input("Enter your Anthropic API key:", type="password")
         video_url = st.text_input("Enter the YouTube video URL:")
-        max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=3000, value=1000, step=100)
+        max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=5000, value=1000, step=100)
         st.subheader("Prompt Templates")
         prompt_templates = {
             "Summary": "Summarize the following transcript:",
