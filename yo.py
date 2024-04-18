@@ -2,6 +2,7 @@ import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
 import anthropic
 from pytube import YouTube
+import pyperclip
 
 def fetch_transcript(video_id):
     try:
