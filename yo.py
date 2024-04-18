@@ -106,10 +106,10 @@ def main():
                     summarize_progress.progress(100)
                     if summary:
                         st.success("Summary of the Transcript:")
-                        st.code(summary, language=None)
+                        st.write(summary)
                         copy_button = st.button("Copy Summary")
                         if copy_button:
-                            copy_to_clipboard(summary)
+                            pyperclip.copy(summary)
                             st.success("Summary copied to clipboard!")
                     else:
                         st.error("Failed to summarize the transcript.")
