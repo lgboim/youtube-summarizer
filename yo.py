@@ -107,26 +107,22 @@ def main():
                     summary = summarize_text(transcript, prompt, api_key, max_tokens)
                     summary_progress.progress(100)
                     
-                    if summary:
-                        st.success("Summary of the Transcript:")
-                        summary_container = st.container()
-                        with summary_container:
-                            st.code(summary, language="text")
-                            copy_button = st.button("Copy Summary")
-                            if copy_button:
-                                copy_success = summary_container.button("Summary copied to clipboard!")
-                                if copy_success:
-                                    st.experimental_rerun()
-                    else:
-                        st.error("Could not generate the summary.")
+                if summary:
+                    st.success("Summary of the Transcript:")
+                    summary_container = st.container()
+                    with summary_container:
+                        st.code(summary, language="text")
+                        copy_button = st.button("Copy Summary")
+                        if copy_button:
+                            pyperclip.copy(summary)  # Copy the summary to the clipboard
+                            st.success("Summary copied to clipboard!")
                 else:
-                    st.error("Could not fetch the transcript.")
+                    st.error("Could not generate the summary.")
             except Exception as e:
                 st.error(f"Error: {e}")
         elif not video_url:
             st.warning("Please enter a valid YouTube video URL.")
         else:
             st.warning("Please enter your Anthropic API key.")
-
 if __name__ == "__main__":
     main()
