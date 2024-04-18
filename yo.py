@@ -89,39 +89,40 @@ def main():
 
         summarize_button = st.button("Summarize")
 
-    if summarize_button:
-        if video_url and api_key:
-            try:
-                video_id = video_url.split('v=')[-1]
-                video = YouTube(video_url)
-                thumbnail_url = video.thumbnail_url
-                st.image(thumbnail_url, width=400)  # Display the video thumbnail
-                st.info("Fetching transcript...")
-                transcript_progress = st.progress(0)
-                transcript = fetch_transcript(video_id)
-                transcript_progress.progress(100)
-                if transcript:
-                    st.info("Summarizing the transcript...")
-                    summarize_progress = st.progress(0)
-                    summary = summarize_text(transcript, prompt, api_key, max_tokens)
-                    summarize_progress.progress(100)
-                    if summary:
-                        st.success("Summary of the Transcript:")
+if summarize_button:
+    if video_url and api_key:
+        try:
+            video_id = video_url.split('v=')[-1]
+            video = YouTube(video_url)
+            thumbnail_url = video.thumbnail_url
+            st.image(thumbnail_url, width=400)  # Display the video thumbnail
+            st.info("Fetching transcript...")
+            transcript_progress = st.progress(0)
+            transcript = fetch_transcript(video_id)
+            transcript_progress.progress(100)
+            if transcript:
+                st.info("Summarizing the transcript...")
+                summarize_progress = st.progress(0)
+                summary = summarize_text(transcript, prompt, api_key, max_tokens)
+                summarize_progress.progress(100)
+                if summary:
+                    st.success("Summary of the Transcript:")
+                    summary_container = st.container()
+                    with summary_container:
                         st.write(summary)
-                        copy_button = st.button("Copy Summary")
-                        if copy_button:
-                            pyperclip.copy(summary)
-                            st.success("Summary copied to clipboard!")
-                    else:
-                        st.error("Failed to summarize the transcript.")
+                    copy_button = summary_container.button("Copy Summary")
+                    if copy_button:
+                        pyperclip.copy(summary)
+                        st.success("Summary copied to clipboard!")
                 else:
-                    st.error("Could not fetch the transcript.")
-            except Exception as e:
-                st.error(f"Error: {e}")
-        elif not video_url:
-            st.warning("Please enter a valid YouTube video URL.")
-        else:
-            st.warning("Please enter your Anthropic API key.")
-
+                    st.error("Failed to summarize the transcript.")
+            else:
+                st.error("Could not fetch the transcript.")
+        except Exception as e:
+            st.error(f"Error: {e}")
+    elif not video_url:
+        st.warning("Please enter a valid YouTube video URL.")
+    else:
+        st.warning("Please enter your Anthropic API key.")
 if __name__ == "__main__":
     main()
