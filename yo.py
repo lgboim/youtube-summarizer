@@ -144,6 +144,7 @@ def main():
             web_url = st.text_input("Enter the web page URL:", key="web_url")
 
         with st.form("input_form"):
+            summarize_button = st.form_submit_button(label="Summarize")
             max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100, key="max_tokens")
 
             st.subheader("Prompt Templates")
@@ -176,8 +177,6 @@ def main():
                 prompt = st.text_area("Enter a custom prompt:", key="custom_prompt")
             else:
                 prompt = prompt_templates[selected_template]
-
-            summarize_button = st.form_submit_button(label="Summarize")
 
     main_container = st.container()
     copy_container = st.container()
