@@ -1,6 +1,8 @@
 streamlit
+requests
+beautifulsoup4
 youtube_transcript_api
 anthropic
 pytube
 pyperclip
-
+groq
