@@ -1,8 +1,38 @@
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+from urllib.robotparser import RobotFileParser
+import platform
 from youtube_transcript_api import YouTubeTranscriptApi
 import anthropic
 from pytube import YouTube
 import pyperclip
+from groq import Groq
+
+def fetch_page_text(url):
+    try:
+        # Parse robots.txt for the target website
+        rp = RobotFileParser()
+        rp.set_url(urlparse(url).scheme + "://" + urlparse(url).netloc + "/robots.txt")
+        rp.read()
+
+        # Check if scraping the target URL is allowed
+        if not rp.can_fetch("*", url):
+            return "Access denied by robots.txt", ""
+
+        # Set a user-agent to mimic a browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+        }
+
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        return soup.get_text(separator='\n', strip=True), ""
+
+    except Exception as e:
+        return str(e), ""
 
 def fetch_transcript(video_id):
     try:
@@ -19,16 +49,16 @@ def fetch_transcript(video_id):
         st.error(f"Error fetching transcript: {e}")
         return None
 
-def summarize_text(text, prompt, api_key, max_tokens):
+def summarize_text_anthropic(text, prompt, api_key, max_tokens):
     try:
         # Initialize the Anthropic client
         client = anthropic.Anthropic(api_key=api_key)
         # Create a message to send to the API for summarization
         response = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-haiku-20240307",  # You can change the model here
             max_tokens=max_tokens,
             messages=[
-                {"role": "user", "content": f"{prompt}\n\n{text}"}
+                {"role": "user", "content": f"{prompt}\n\n{text}\n\n**Aim for a summary length of approximately {max_tokens} tokens.**"}
             ]
         )
         # Assuming response.content is a list of ContentBlock objects
@@ -43,86 +73,202 @@ def summarize_text(text, prompt, api_key, max_tokens):
         st.error(f"Failed to get response from Anthropic API: {e}")
         return None
 
+def get_device_data():
+    device_data = {
+        "system": platform.system(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "version": platform.version(),
+        "python_version": platform.python_version(),
+    }
+    return device_data
+
 def main():
-    st.set_page_config(page_title="YouTube Transcript Summarizer", page_icon=":memo:", layout="wide")
-    st.title("YouTube Transcript Summarizer")
-    
+    st.set_page_config(
+        page_title="Content Summarizer",
+        page_icon=":memo:",
+        layout="wide",
+        initial_sidebar_state="expanded"  # Keep sidebar open by default
+    )
+
+    # Add custom CSS for styling
+    with open("style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+    st.title("Content Summarizer")
+
     # Add a sidebar for user inputs
     with st.sidebar:
-        st.subheader("Input")
-        api_key = st.text_input("Enter your Anthropic API key:", type="password")
-        st.markdown("[Get your API key here](https://console.anthropic.com/settings/keys)")
-        video_url = st.text_input("Enter the YouTube video URL:")
-        max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100)
-        
-        st.subheader("Prompt Templates")
-        prompt_templates = {
-            "Summary": "Summarize the following transcript:",
-            "Key Points": "What are the key points discussed in the following transcript?",
-            "Outline": "Create an outline for the following transcript:",
-            "Action Items": "Extract any action items or tasks mentioned in the following transcript:",
-            "Questions": "What questions are raised or left unanswered in the following transcript?",
-            "Emotions": "Identify the dominant emotions conveyed in the following transcript:",
-            "Themes": "What are the main themes or topics covered in the following transcript?",
-            "Takeaways": "What are the key takeaways or lessons learned from the following transcript?",
-            "Quotes": "Extract notable quotes or statements from the following transcript:",
-            "Summarize for Twitter": "Summarize the following transcript in 280 characters or less:",
-            "TL;DR": "Provide a brief TL;DR (too long; didn't read) summary of the following transcript:",
-            "Highlights": "What are the highlights or most important moments in the following transcript?",
-            "Critique": "Provide a constructive critique of the content in the following transcript:",
-            "Fact-checking": "Identify any statements in the following transcript that may require fact-checking:",
-            "Opinion vs. Facts": "Distinguish between opinions and facts presented in the following transcript:",
-            "Actionable Insights": "What actionable insights can be derived from the following transcript?",
-            "Key Decisions": "What key decisions or conclusions are made in the following transcript?",
-            "Next Steps": "Based on the following transcript, what should be the next steps or actions?",
-            "Unanswered Questions": "What questions or issues are left unresolved in the following transcript?",
-            "Controversial Points": "Identify any controversial or debatable points mentioned in the following transcript:",
-            "Custom": st.text_area("Enter a custom prompt:")
-        }
-        selected_template = st.radio("Select a prompt template:", list(prompt_templates.keys()))
-        
-        if selected_template == "Custom":
-            prompt = prompt_templates["Custom"]
+        st.subheader("Model Selection")
+        selected_model_api = st.radio("Choose API:", ["Anthropic", "Groq"], key="model_api")
+
+        if selected_model_api == "Anthropic":
+            api_key = st.text_input("Enter your Anthropic API key:", type="password", key="anthropic_api_key")
+            st.markdown("[Get your API key here](https://console.anthropic.com/settings/keys)")
+        elif selected_model_api == "Groq":
+            groq_api_key = st.text_input("Enter your Groq API key:", type="password", key="groq_api_key")
+            st.markdown("[Get your API key here](https://console.groq.com/keys)")  # Update with Groq API key link
+
+            groq_model_options = {
+                "LLaMA3 8b": "llama3-8b-8192",
+                "LLaMA3 70b": "llama3-70b-8192",
+                "LLaMA2 70b": "llama2-70b-4096",
+                "Mixtral 8x7b": "mixtral-8x7b-32768",
+                "Gemma 7b": "gemma-7b-it"
+            }
+            selected_groq_model = st.selectbox("Select Groq Model:", list(groq_model_options.keys()), key="groq_model")
+
+        def update_content_type():
+            st.session_state.content_type = st.session_state.selected_content_type
+
+        content_type_options = ["YouTube Video", "Web Page"]
+        selected_content_type = st.radio("Select content type:", content_type_options, key="selected_content_type", on_change=update_content_type)
+
+        if "content_type" not in st.session_state:
+            st.session_state.content_type = selected_content_type
+
+        if st.session_state.content_type == "YouTube Video":
+            video_url = st.text_input("Enter the YouTube video URL:", key="video_url")
         else:
-            prompt = prompt_templates[selected_template]
-        
-        summarize_button = st.button("Summarize")
-    
-    if summarize_button:
-        if video_url and api_key:
-            try:
-                video_id = video_url.split('v=')[-1]
-                video = YouTube(video_url)
-                thumbnail_url = video.thumbnail_url
-                st.image(thumbnail_url, width=400)  # Display the video thumbnail
-                
-                st.info("Fetching transcript...")
-                transcript_progress = st.progress(0)
-                transcript = fetch_transcript(video_id)
-                transcript_progress.progress(100)
-                
-                if transcript:
-                    st.info("Summarizing the transcript...")
-                    summary_progress = st.progress(0)
-                    summary = summarize_text(transcript, prompt, api_key, max_tokens)
-                    summary_progress.progress(100)
-                    
-                if summary:
-                    st.success("Summary of the Transcript:")
-                    summary_container = st.container()
-                    with summary_container:
-                        st.code(summary, language="text")
-                        copy_button = st.button("Copy Summary")
-                        if copy_button:
-                            pyperclip.copy(summary)  # Copy the summary to the clipboard
-                            st.success("Summary copied to clipboard!")
-                else:
-                    st.error("Could not generate the summary.")
-            except Exception as e:
-                st.error(f"Error: {e}")
-        elif not video_url:
-            st.warning("Please enter a valid YouTube video URL.")
-        else:
-            st.warning("Please enter your Anthropic API key.")
+            web_url = st.text_input("Enter the web page URL:", key="web_url")
+
+        with st.form("input_form"):
+            max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100, key="max_tokens")
+
+            st.subheader("Prompt Templates")
+            prompt_templates = {
+                "Summary": "Summarize the following content:",
+                "Key Points": "What are the key points discussed in the following content?",
+                "Outline": "Create an outline for the following content:",
+                "Action Items": "Extract any action items or tasks mentioned in the following content:",
+                "Questions": "What questions are raised or left unanswered in the following content?",
+                "Emotions": "Identify the dominant emotions conveyed in the following content:",
+                "Themes": "What are the main themes or topics covered in the following content?",
+                "Takeaways": "What are the key takeaways or lessons learned from the following content?",
+                "Quotes": "Extract notable quotes or statements from the following content:",
+                "Summarize for Twitter": "Summarize the following content in 280 characters or less:",
+                "TL;DR": "Provide a brief TL;DR (too long; didn't read) summary of the following content:",
+                "Highlights": "What are the highlights or most important moments in the following content?",
+                "Critique": "Provide a constructive critique of the content:",
+                "Fact-checking": "Identify any statements in the following content that may require fact-checking:",
+                "Opinion vs. Facts": "Distinguish between opinions and facts presented in the following content:",
+                "Actionable Insights": "What actionable insights can be derived from the following content?",
+                "Key Decisions": "What key decisions or conclusions are made in the following content?",
+                "Next Steps": "Based on the following content, what should be the next steps or actions?",
+                "Unanswered Questions": "What questions or issues are left unresolved in the following content?",
+                "Controversial Points": "Identify any controversial or debatable points mentioned in the following content:",
+                "Custom": st.text_area("Enter a custom prompt:")
+            }
+            selected_template = st.radio("Select a prompt template:", list(prompt_templates.keys()), key="prompt_template")
+
+            if selected_template == "Custom":
+                prompt = st.text_area("Enter a custom prompt:", key="custom_prompt")
+            else:
+                prompt = prompt_templates[selected_template]
+
+            summarize_button = st.form_submit_button("Summarize")
+
+    main_container = st.container()
+
+    with main_container:
+        if summarize_button:
+            if st.session_state.content_type == "YouTube Video" and video_url:
+                try:
+                    video_id = video_url.split('v=')[-1]
+                    video = YouTube(video_url)
+                    thumbnail_url = video.thumbnail_url
+                    st.image(thumbnail_url, width=400)  # Display the video thumbnail
+
+                    st.info("Fetching transcript...")
+                    transcript_progress = st.progress(0)
+                    transcript = fetch_transcript(video_id)
+                    transcript_progress.progress(100)
+
+                    if transcript:
+                        st.info("Summarizing the transcript...")
+                        summary_progress = st.progress(0)
+
+                        if selected_model_api == "Anthropic" and api_key:
+                            summary = summarize_text_anthropic(transcript, prompt, api_key, max_tokens)
+                        elif selected_model_api == "Groq" and groq_api_key:
+                            client = Groq(api_key=groq_api_key)
+                            response = client.chat.completions.create(
+                                messages=[
+                                    {"role": "user", "content": f"{prompt}\n\n{transcript}"}
+                                ],
+                                model=groq_model_options[selected_groq_model]
+                            )
+                            summary = response.choices[0].message.content
+                        else:
+                            st.warning("Please enter the required API key for the selected model.")
+                            summary = None
+
+                        summary_progress.progress(100)
+
+                        if summary:
+                            st.success("Summary of the Transcript:")
+                            summary_placeholder = st.empty()
+                            summary_placeholder.text(summary)
+
+                            # Use a container to prevent refresh on copy button click
+                            copy_container = st.container()
+                            with copy_container:
+                                copy_button = st.button("Copy Summary", key="copy_button")
+                                if copy_button:
+                                    pyperclip.copy(summary)
+                                    st.success("Summary copied to clipboard!")
+                        else:
+                            st.error("Could not generate the summary.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            elif st.session_state.content_type == "Web Page" and web_url:
+                try:
+                    st.info("Fetching web page content...")
+                    content_progress = st.progress(0)
+                    content, error = fetch_page_text(web_url)
+                    content_progress.progress(100)
+
+                    if error:
+                        st.error(f"Error fetching web page content: {error}")
+                    else:
+                        st.info("Summarizing the web page content...")
+                        summary_progress = st.progress(0)
+
+                        if selected_model_api == "Anthropic" and api_key:
+                            summary = summarize_text_anthropic(content, prompt, api_key, max_tokens)
+                        elif selected_model_api == "Groq" and groq_api_key:
+                            client = Groq(api_key=groq_api_key)
+                            response = client.chat.completions.create(
+                                messages=[
+                                    {"role": "user", "content": f"{prompt}\n\n{content}"}
+                                ],
+                                model=groq_model_options[selected_groq_model]
+                            )
+                            summary = response.choices[0].message.content
+                        else:
+                            st.warning("Please enter the required API key for the selected model.")
+                            summary = None
+
+                        summary_progress.progress(100)
+
+                        if summary:
+                            st.success("Summary of the Web Page Content:")
+                            summary_placeholder = st.empty()
+                            summary_placeholder.text(summary)
+
+                            # Use a container to prevent refresh on copy button click
+                            copy_container = st.container()
+                            with copy_container:
+                                copy_button = st.button("Copy Summary", key="copy_button")
+                                if copy_button:
+                                    pyperclip.copy(summary)
+                                    st.success("Summary copied to clipboard!")
+                        else:
+                            st.error("Could not generate the summary.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.warning("Please enter a valid URL.")
+
 if __name__ == "__main__":
     main()
