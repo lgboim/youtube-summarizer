@@ -19,7 +19,7 @@ def fetch_page_text(url):
 
         # Check if scraping the target URL is allowed
         if not rp.can_fetch("*", url):
-            return "Access denied by robots.txt", ""
+            return "Access denied by robots.txt", "", "", ""
 
         # Set a user-agent to mimic a browser
         headers = {
@@ -29,10 +29,21 @@ def fetch_page_text(url):
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, "html.parser")
 
-        return soup.get_text(separator='\n', strip=True), ""
+        # Extract page title
+        title = soup.title.string if soup.title else "Untitled Page"
+
+        # Find the first image with an "og:image" property
+        og_image = (soup.find('meta', property='og:image') or {}).get('content')
+
+        # If no og:image, try finding the first image with a "src" attribute
+        if not og_image:
+          image = soup.find('img')
+          og_image = image['src'] if image else None
+
+        return soup.get_text(separator='\n', strip=True), "", title, og_image
 
     except Exception as e:
-        return str(e), ""
+        return "", str(e), "", ""
 
 def fetch_transcript(video_id):
     try:
@@ -218,8 +229,12 @@ def main():
                 try:
                     st.info("Fetching web page content...")
                     content_progress = st.progress(0)
-                    content, error = fetch_page_text(web_url)
+                    content, error, title, image_url = fetch_page_text(web_url)
                     content_progress.progress(100)
+                    if title:
+                        st.subheader(title)
+                    if image_url:
+                        st.image(image_url, width=400)
 
                     if error:
                         st.error(f"Error fetching web page content: {error}")
@@ -257,7 +272,7 @@ def main():
     with copy_container:
         if summary:
             #st.subheader("Summary:")
-            summary_text_area = st.text_area("Your summarized text appears below:", value=summary, height=500, key="summary_text_area")
+            summary_text_area = st.text_area("", value=summary, height=500, key="summary_text_area")
         else:
             st.write("No summary generated yet.")
 if __name__ == "__main__":
