@@ -92,8 +92,8 @@ def main():
     )
 
     # Add custom CSS for styling
-   #  with open("style.css") as f:
-        # st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    #with open("style.css") as f:
+        #st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
     st.title("Content Summarizer")
 
@@ -110,10 +110,10 @@ def main():
             st.markdown("[Get your API key here](https://console.groq.com/keys)")  # Update with Groq API key link
 
             groq_model_options = {
+                "Mixtral 8x7b": "mixtral-8x7b-32768",
                 "LLaMA3 8b": "llama3-8b-8192",
                 "LLaMA3 70b": "llama3-70b-8192",
                 "LLaMA2 70b": "llama2-70b-4096",
-                "Mixtral 8x7b": "mixtral-8x7b-32768",
                 "Gemma 7b": "gemma-7b-it"
             }
             selected_groq_model = st.selectbox("Select Groq Model:", list(groq_model_options.keys()), key="groq_model")
@@ -166,10 +166,11 @@ def main():
             else:
                 prompt = prompt_templates[selected_template]
 
-            summarize_button = st.form_submit_button("Summarize")
+            summarize_button = st.form_submit_button(label="Summarize")
 
     main_container = st.container()
-
+    copy_container = st.container()
+    summary = ""
     with main_container:
         if summarize_button:
             if st.session_state.content_type == "YouTube Video" and video_url:
@@ -207,16 +208,8 @@ def main():
 
                         if summary:
                             st.success("Summary of the Transcript:")
-                            summary_placeholder = st.empty()
-                            summary_placeholder.text(summary)
-
-                            # Use a container to prevent refresh on copy button click
-                            copy_container = st.container()
-                            with copy_container:
-                                copy_button = st.button("Copy Summary", key="copy_button")
-                                if copy_button:
-                                    pyperclip.copy(summary)
-                                    st.success("Summary copied to clipboard!")
+                            #summary_placeholder = st.empty()
+                            #summary_placeholder.text(summary)
                         else:
                             st.error("Could not generate the summary.")
                 except Exception as e:
@@ -253,22 +246,19 @@ def main():
 
                         if summary:
                             st.success("Summary of the Web Page Content:")
-                            summary_placeholder = st.empty()
-                            summary_placeholder.text(summary)
-
-                            # Use a container to prevent refresh on copy button click
-                            copy_container = st.container()
-                            with copy_container:
-                                copy_button = st.button("Copy Summary", key="copy_button")
-                                if copy_button:
-                                    pyperclip.copy(summary)
-                                    st.success("Summary copied to clipboard!")
+                            #summary_placeholder = st.empty()
+                            #summary_placeholder.text(summary)
                         else:
                             st.error("Could not generate the summary.")
                 except Exception as e:
                     st.error(f"Error: {e}")
             else:
                 st.warning("Please enter a valid URL.")
-
+    with copy_container:
+        if summary:
+            #st.subheader("Summary:")
+            summary_text_area = st.text_area("Your summarized text appears below:", value=summary, height=500, key="summary_text_area")
+        else:
+            st.write("No summary generated yet.")
 if __name__ == "__main__":
     main()
