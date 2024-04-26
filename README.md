@@ -2,6 +2,12 @@
 
 YouTube Summarizer is a Streamlit application that allows users to generate summaries or Seaborn diagrams from YouTube video transcripts or web page content using Anthropic or Groq AI models.
 
+## Demo
+
+Check out the live demo of the YouTube Summarizer application:
+
+[Summarizer Demo](https://youtube-summarizer-xtjw2qzjbbmgogyanyfh9j.streamlit.app/)
+
 ## Features
 
 - Summarize YouTube video transcripts or web page content
