@@ -6,3 +6,4 @@ anthropic
 pytube
 pyperclip
 groq
+seaborn
