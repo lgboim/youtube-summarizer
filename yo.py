@@ -9,19 +9,18 @@ import anthropic
 from pytube import YouTube
 import pyperclip
 from groq import Groq
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def fetch_page_text(url):
     try:
-        # Parse robots.txt for the target website
         rp = RobotFileParser()
         rp.set_url(urlparse(url).scheme + "://" + urlparse(url).netloc + "/robots.txt")
         rp.read()
 
-        # Check if scraping the target URL is allowed
         if not rp.can_fetch("*", url):
             return "Access denied by robots.txt", "", "", ""
 
-        # Set a user-agent to mimic a browser
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         }
@@ -29,13 +28,10 @@ def fetch_page_text(url):
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, "html.parser")
 
-        # Extract page title
         title = soup.title.string if soup.title else "Untitled Page"
 
-        # Find the first image with an "og:image" property
         og_image = (soup.find('meta', property='og:image') or {}).get('content')
 
-        # If no og:image, try finding the first image with a "src" attribute
         if not og_image:
           image = soup.find('img')
           og_image = image['src'] if image else None
@@ -47,34 +43,32 @@ def fetch_page_text(url):
 
 def fetch_transcript(video_id):
     try:
-        # Fetch available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        # Get transcript for English
         transcript = transcript_list.find_transcript(['en'])
-        # Fetch the actual transcript data
         transcript_data = transcript.fetch()
-        # Combine all segments into a single text
         full_text = ' '.join(segment['text'] for segment in transcript_data)
         return full_text
     except Exception as e:
         st.error(f"Error fetching transcript: {e}")
         return None
 
-def summarize_text_anthropic(text, prompt, api_key, max_tokens):
+def generate_output_anthropic(text, prompt, api_key, max_tokens, output_type):
     try:
-        # Initialize the Anthropic client
         client = anthropic.Anthropic(api_key=api_key)
-        # Create a message to send to the API for summarization
+        if output_type == "Summary":
+            prompt = f"{prompt}\n\n{text}\n\n**Aim for a summary length of approximately {max_tokens} tokens.**"
+        else:
+            prompt = f"Based on the following content, generate Python code using Seaborn to create a best relevant diagram. self exenable, easy to read and understand. not assume we have the relevant data, write all of it in the code. super impoertant - write just the code, withot any text before or after! start just with 'import', not ```python, end with plt.show(), not ```:\n\n{text}"
+        
         response = client.messages.create(
-            model="claude-3-haiku-20240307",  # You can change the model here
+            model="claude-3-haiku-20240307",
             max_tokens=max_tokens,
             messages=[
-                {"role": "user", "content": f"{prompt}\n\n{text}\n\n**Aim for a summary length of approximately {max_tokens} tokens.**"}
+                {"role": "user", "content": prompt}
             ]
         )
-        # Assuming response.content is a list of ContentBlock objects
+        
         if isinstance(response.content, list) and len(response.content) > 0:
-            # Extract the text block from the first ContentBlock
             content_block = response.content[0].text
             return content_block
         else:
@@ -82,6 +76,31 @@ def summarize_text_anthropic(text, prompt, api_key, max_tokens):
             return None
     except Exception as e:
         st.error(f"Failed to get response from Anthropic API: {e}")
+        return None
+
+def generate_output_groq(text, prompt, api_key, max_tokens, output_type, model):
+    try:
+        client = Groq(api_key=api_key)
+        if output_type == "Summary":
+            prompt = f"{prompt}\n\n{text}"
+        else:
+            prompt = f"Based on the following content, generate Python code using Seaborn to create a best relevant diagram. self exenable, easy to read and understand. not assume we have the relevant data, write all of it in the code. super impoertant - write just the code, withot any text before or after! start just with 'import', not ```python, end with plt.show(), not ```:\n\n{text}"
+        
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            model=model
+        )
+        
+        if response.choices and len(response.choices) > 0:
+            content_block = response.choices[0].message.content
+            return content_block
+        else:
+            st.warning("The response content is not in the expected format.")
+            return None
+    except Exception as e:
+        st.error(f"Failed to get response from Groq API: {e}")
         return None
 
 def get_device_data():
@@ -99,16 +118,14 @@ def main():
         page_title="Content Summarizer",
         page_icon=":memo:",
         layout="wide",
-        initial_sidebar_state="expanded"  # Keep sidebar open by default
+        initial_sidebar_state="expanded"
     )
 
-    # Add custom CSS for styling
-    #with open("style.css") as f:
-        #st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    with open("style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
     st.title("Content Summarizer")
-
-    # Add a sidebar for user inputs
+    
     with st.sidebar:
         st.subheader("Model Selection")
         selected_model_api = st.radio("Choose API:", ["Anthropic", "Groq"], key="model_api")
@@ -118,7 +135,7 @@ def main():
             st.markdown("[Get your API key here](https://console.anthropic.com/settings/keys)")
         elif selected_model_api == "Groq":
             groq_api_key = st.text_input("Enter your Groq API key:", type="password", key="groq_api_key")
-            st.markdown("[Get your API key here](https://console.groq.com/keys)")  # Update with Groq API key link
+            st.markdown("[Get your API key here](https://console.groq.com/keys)")
 
             groq_model_options = {
                 "Mixtral 8x7b": "mixtral-8x7b-32768",
@@ -144,7 +161,7 @@ def main():
             web_url = st.text_input("Enter the web page URL:", key="web_url")
 
         with st.form("input_form"):
-            summarize_button = st.form_submit_button(label="Summarize")
+            summarize_button = st.form_submit_button(label="Generate")
             max_tokens = st.slider("Select the maximum number of tokens:", min_value=100, max_value=4000, value=1000, step=100, key="max_tokens")
 
             st.subheader("Prompt Templates")
@@ -169,18 +186,22 @@ def main():
                 "Next Steps": "Based on the following content, what should be the next steps or actions?",
                 "Unanswered Questions": "What questions or issues are left unresolved in the following content?",
                 "Controversial Points": "Identify any controversial or debatable points mentioned in the following content:",
-                "Custom": st.text_area("Enter a custom prompt:")
+                "Custom": ""
             }
             selected_template = st.radio("Select a prompt template:", list(prompt_templates.keys()), key="prompt_template")
 
             if selected_template == "Custom":
-                prompt = st.text_area("Enter a custom prompt:", key="custom_prompt")
+                custom_prompt = st.text_area("Enter your custom prompt:", key="custom_prompt")
+                prompt = custom_prompt
             else:
                 prompt = prompt_templates[selected_template]
 
+            st.write("Prompt:", prompt)
+
+            output_type = st.radio("Select output type:", ["Summary", "Seaborn Diagram"], key="output_type")
+
     main_container = st.container()
-    copy_container = st.container()
-    summary = ""
+    output = ""
     with main_container:
         if summarize_button:
             if st.session_state.content_type == "YouTube Video" and video_url:
@@ -188,7 +209,7 @@ def main():
                     video_id = video_url.split('v=')[-1]
                     video = YouTube(video_url)
                     thumbnail_url = video.thumbnail_url
-                    st.image(thumbnail_url, width=400)  # Display the video thumbnail
+                    st.image(thumbnail_url, width=400)
 
                     st.info("Fetching transcript...")
                     transcript_progress = st.progress(0)
@@ -196,32 +217,33 @@ def main():
                     transcript_progress.progress(100)
 
                     if transcript:
-                        st.info("Summarizing the transcript...")
-                        summary_progress = st.progress(0)
+                        st.info("Generating output...")
+                        output_progress = st.progress(0)
 
                         if selected_model_api == "Anthropic" and api_key:
-                            summary = summarize_text_anthropic(transcript, prompt, api_key, max_tokens)
+                            output = generate_output_anthropic(transcript, prompt, api_key, max_tokens, output_type)
                         elif selected_model_api == "Groq" and groq_api_key:
-                            client = Groq(api_key=groq_api_key)
-                            response = client.chat.completions.create(
-                                messages=[
-                                    {"role": "user", "content": f"{prompt}\n\n{transcript}"}
-                                ],
-                                model=groq_model_options[selected_groq_model]
-                            )
-                            summary = response.choices[0].message.content
+                            output = generate_output_groq(transcript, prompt, groq_api_key, max_tokens, output_type, groq_model_options[selected_groq_model])
                         else:
                             st.warning("Please enter the required API key for the selected model.")
-                            summary = None
+                            output = None
 
-                        summary_progress.progress(100)
+                        output_progress.progress(100)
 
-                        if summary:
-                            st.success("Summary of the Transcript:")
-                            #summary_placeholder = st.empty()
-                            #summary_placeholder.text(summary)
+                        if output:
+                            if output_type == "Summary":
+                                st.success("Summary of the Transcript:")
+                                st.write(output)
+                            else:
+                                st.success("Seaborn Diagram:")
+                                try:
+                                    exec(output)
+                                    st.pyplot(plt)
+                                except Exception as e:
+                                    st.error(f"Error executing the generated code: {e}")
+                                    st.code(output, language="python")
                         else:
-                            st.error("Could not generate the summary.")
+                            st.error("Could not generate the output.")
                 except Exception as e:
                     st.error(f"Error: {e}")
             elif st.session_state.content_type == "Web Page" and web_url:
@@ -238,41 +260,37 @@ def main():
                     if error:
                         st.error(f"Error fetching web page content: {error}")
                     else:
-                        st.info("Summarizing the web page content...")
-                        summary_progress = st.progress(0)
+                        st.info("Generating output...")
+                        output_progress = st.progress(0)
 
                         if selected_model_api == "Anthropic" and api_key:
-                            summary = summarize_text_anthropic(content, prompt, api_key, max_tokens)
+                            output = generate_output_anthropic(content, prompt, api_key, max_tokens, output_type)
                         elif selected_model_api == "Groq" and groq_api_key:
-                            client = Groq(api_key=groq_api_key)
-                            response = client.chat.completions.create(
-                                messages=[
-                                    {"role": "user", "content": f"{prompt}\n\n{content}"}
-                                ],
-                                model=groq_model_options[selected_groq_model]
-                            )
-                            summary = response.choices[0].message.content
+                            output = generate_output_groq(content, prompt, groq_api_key, max_tokens, output_type, groq_model_options[selected_groq_model])
                         else:
                             st.warning("Please enter the required API key for the selected model.")
-                            summary = None
+                            output = None
 
-                        summary_progress.progress(100)
+                        output_progress.progress(100)
 
-                        if summary:
-                            st.success("Summary of the Web Page Content:")
-                            #summary_placeholder = st.empty()
-                            #summary_placeholder.text(summary)
+                        if output:
+                            if output_type == "Summary":
+                                st.success("Summary of the Web Page Content:")
+                                st.write(output)
+                            else:
+                                st.success("Seaborn Diagram:")
+                                try:
+                                    exec(output)
+                                    st.pyplot(plt)
+                                except Exception as e:
+                                    st.error(f"Error executing the generated code: {e}")
+                                    st.code(output, language="python")
                         else:
-                            st.error("Could not generate the summary.")
+                            st.error("Could not generate the output.")
                 except Exception as e:
                     st.error(f"Error: {e}")
             else:
                 st.warning("Please enter a valid URL.")
-    with copy_container:
-        if summary:
-            #st.subheader("Summary:")
-            summary_text_area = st.text_area("", value=summary, height=500, key="summary_text_area")
-        else:
-            st.write("No summary generated yet.")
+
 if __name__ == "__main__":
     main()
