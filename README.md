@@ -88,7 +88,3 @@ This project is licensed under the [MIT License](LICENSE).
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
-
----
-
-Feel free to customize the content further based on your specific project details and requirements.
